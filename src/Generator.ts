@@ -2,9 +2,7 @@ import { Schema, SchemaDefinition, SchemaTypeOptions, Types } from 'mongoose'
 import moment = require('moment')
 
 export abstract class Generator {
-    schema: Schema
-    collection: String
-    models: Object
+    protected schema: Schema
 
     static hasOwnProp(obj: object, prop: string): boolean {
         try {
