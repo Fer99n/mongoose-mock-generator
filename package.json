@@ -1,0 +1,23 @@
+{
+    "name": "mongoose-mock-generator",
+    "version": "1.0.1",
+    "description": "",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Ferdinando Nocera",
+    "license": "ISC",
+    "devDependencies": {
+        "eslint-config-airbnb-base": "^14.2.0",
+        "eslint-config-prettier": "^8.3.0",
+        "eslint-plugin-import": "^2.22.0",
+        "eslint-plugin-prettier": "^3.1.4",
+        "prettier": "^2.4.1"
+    },
+    "dependencies": {
+        "moment": "^2.29.1",
+        "mongoose": "^6.2.7"
+    }
+}
