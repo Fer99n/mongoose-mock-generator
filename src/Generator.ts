@@ -1,7 +1,5 @@
-import { Schema, SchemaDefinition, SchemaTypeOptions } from 'mongoose'
+import { Schema, SchemaDefinition, SchemaTypeOptions, Types } from 'mongoose'
 import moment = require('moment')
-
-type ObjectId = Schema.Types.ObjectId
 
 export abstract class Generator {
     schema: Schema
@@ -9,13 +7,17 @@ export abstract class Generator {
     models: Object
 
     static hasOwnProp(obj: object, prop: string): boolean {
-        return Object.prototype.hasOwnProperty.call(obj, prop)
+        try {
+            return Object.prototype.hasOwnProperty.call(obj, prop)
+        } catch (e) {
+            console.log('Cannot check prop', obj, prop)
+        }
     }
 
-    static getFromType(type: any, key: string): ObjectId | string | number | Date {
+    static getFromType(type: any, key: string): string | number | Date {
         switch (type.name) {
             case 'ObjectId':
-                return
+                return new Types.ObjectId().toString()
             case 'String':
                 return `example-${key}`
             case 'Number':
@@ -23,12 +25,13 @@ export abstract class Generator {
             case 'Date':
                 return moment(new Date()).add(1, 'hour').toDate()
             default:
-                break
+                return undefined
         }
     }
 
     static canInferValue(o: any): boolean {
         return (
+            !!o.obj ||
             (Generator.hasOwnProp(o, 'type') && !Generator.hasOwnProp(o.type, 'type')) ||
             Generator.hasOwnProp(o, 'default') ||
             Generator.hasOwnProp(o, 'enum') ||
@@ -37,38 +40,45 @@ export abstract class Generator {
     }
 
     static inferValue(o: SchemaDefinition | SchemaTypeOptions<any>, k: string): string | any {
-        if (Array.isArray(o)) {
-            if (o[0].name) return Generator.getFromType(o[0], k)
-            const r = {}
-            Generator.deepSearch(o[0], r)
-            return r
+        try {
+            if (o.obj) {
+                const r = {}
+                Generator.generate(o.obj, r)
+                return r
+            }
+
+            if (Array.isArray(o)) {
+                if (typeof o[0] === 'function' && o[0].name) return Generator.getFromType(o[0], k)
+                const r = {}
+                Generator.generate(o[0].obj || o[0], r)
+                return [r]
+            }
+
+            if (Generator.hasOwnProp(o, 'enum')) {
+                const first: string = o.enum[0]
+                return first
+            }
+
+            if (Generator.hasOwnProp(o, 'default'))
+                if (typeof o.default === 'function') return o.default()
+                else return o.default
+
+            if (Generator.hasOwnProp(o, 'type') && !Generator.hasOwnProp(o.type, 'type'))
+                return Generator.getFromType(o.type, k)
+        } catch (e) {
+            console.error('Cannot infer value for: ', o, k)
+            return undefined
         }
-
-        if (Generator.hasOwnProp(o, 'enum')) {
-            const first: string = o.enum[0]
-            return first
-        }
-
-        if (Generator.hasOwnProp(o, 'default'))
-            if (typeof o.default === 'function') return o.default()
-            else return o.default
-
-        if (Generator.hasOwnProp(o, 'type') && !Generator.hasOwnProp(o.type, 'type'))
-            return Generator.getFromType(o.type, k)
     }
 
-    static deepSearch(obj: SchemaDefinition | SchemaTypeOptions<any>, r: object) {
-        const o = obj instanceof Schema ? obj.obj : obj
-
+    static generate(o: SchemaDefinition | SchemaTypeOptions<any>, r: object) {
         if (typeof o === 'object' && !Generator.canInferValue(o))
             Object.keys(o).forEach((k) =>
-                Generator.canInferValue(o[k]) ? (r[k] = Generator.inferValue(o[k], k)) : Generator.deepSearch(o[k], r)
+                Generator.canInferValue(o[k]) ? (r[k] = Generator.inferValue(o[k], k)) : Generator.generate(o[k], r)
             )
     }
 
-    constructor(schema: Schema, collection?: String, models?: Object) {
+    constructor(schema?: Schema) {
         this.schema = schema
-        this.collection = collection
-        this.models = models
     }
 }
